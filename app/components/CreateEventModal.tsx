@@ -1,8 +1,7 @@
 "use client";
 
-import { Fragment, useState } from "react";
-import { Dialog, Transition } from "@headlessui/react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface CreateEventModalProps {
   isOpen: boolean;
@@ -14,108 +13,85 @@ export default function CreateEventModal({
   onClose,
 }: CreateEventModalProps) {
   const [eventName, setEventName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventName.trim()) return;
 
-    // TODO: Implement event creation
-    // const newEvent = await createEvent(eventName)
-    // onEventCreated(newEvent)
+    try {
+      setIsLoading(true);
+      setError(null);
 
-    setEventName("");
-    onClose();
+      const response = await fetch("/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: eventName.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create event");
+      }
+
+      setEventName("");
+      onClose();
+      router.refresh();
+    } catch (err) {
+      console.error("Error creating event:", err);
+      setError(err instanceof Error ? err.message : "Failed to create event");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  return (
-    <Transition.Root show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={onClose}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" />
-        </Transition.Child>
+  if (!isOpen) return null;
 
-        <div className="fixed inset-0 z-10 overflow-y-auto">
-          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-              enterTo="opacity-100 translate-y-0 sm:scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-              leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+      <div className="bg-gray-800 p-6 rounded-lg w-full max-w-md">
+        <h2 className="text-xl font-semibold mb-4">Create New Event</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label
+              htmlFor="eventName"
+              className="block text-sm font-medium mb-2"
             >
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-                <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
-                  <button
-                    type="button"
-                    className="rounded-md text-gray-400 hover:text-gray-300"
-                    onClick={onClose}
-                  >
-                    <span className="sr-only">Close</span>
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
-                </div>
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                    <Dialog.Title
-                      as="h3"
-                      className="text-lg font-semibold leading-6"
-                    >
-                      Create New Event
-                    </Dialog.Title>
-                    <form onSubmit={handleSubmit} className="mt-4">
-                      <div>
-                        <label
-                          htmlFor="event-name"
-                          className="block text-sm font-medium text-gray-300"
-                        >
-                          Event Name
-                        </label>
-                        <div className="mt-2">
-                          <input
-                            type="text"
-                            name="event-name"
-                            id="event-name"
-                            className="input-field w-full"
-                            value={eventName}
-                            onChange={(e) => setEventName(e.target.value)}
-                            placeholder="Enter event name"
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-                        <button
-                          type="submit"
-                          className="btn-primary w-full sm:ml-3 sm:w-auto"
-                        >
-                          Create Event
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-secondary mt-3 w-full sm:mt-0 sm:w-auto"
-                          onClick={onClose}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </Dialog.Panel>
-            </Transition.Child>
+              Event Name
+            </label>
+            <input
+              type="text"
+              id="eventName"
+              value={eventName}
+              onChange={(e) => setEventName(e.target.value)}
+              className="input-field w-full"
+              placeholder="Enter event name"
+              disabled={isLoading}
+            />
           </div>
-        </div>
-      </Dialog>
-    </Transition.Root>
+          {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-secondary"
+              disabled={isLoading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={isLoading || !eventName.trim()}
+            >
+              {isLoading ? "Creating..." : "Create Event"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

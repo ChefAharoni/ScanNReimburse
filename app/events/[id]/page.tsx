@@ -17,40 +17,53 @@ export default function EventDetailPage() {
   const [summary, setSummary] = useState<EventSummaryType | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchEventData = async () => {
       try {
         setIsLoading(true);
-        // TODO: Implement API call to fetch event data
-        // For now, using mock data
-        const mockEvent: Event = {
-          id: eventId,
-          name: "Sample Event",
-          receiptCount: 0,
-          totalAmount: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
+        setError(null);
 
-        const mockSummary: EventSummaryType = {
-          totalAmount: 0,
-          receiptCount: 0,
-          categoryBreakdown: {
-            FOOD: 0,
-            DRINKS: 0,
-            SUPPLIES: 0,
-            EQUIPMENT: 0,
-            TRAVEL: 0,
-            OTHER: 0,
-          },
-          vendorBreakdown: {},
-        };
+        // Fetch event data
+        const eventResponse = await fetch(`/api/events/${eventId}`);
+        if (!eventResponse.ok) {
+          throw new Error("Failed to fetch event");
+        }
+        const eventData = await eventResponse.json();
+        setEvent(eventData);
 
-        setEvent(mockEvent);
-        setSummary(mockSummary);
-      } catch (error) {
-        console.error("Error fetching event data:", error);
+        // Calculate summary
+        const receipts = eventData.receipts || [];
+        const totalAmount = receipts.reduce(
+          (sum: number, receipt: any) => sum + receipt.totalAmount,
+          0
+        );
+
+        const categoryBreakdown = receipts.reduce((acc: any, receipt: any) => {
+          receipt.items.forEach((item: any) => {
+            acc[item.category] = (acc[item.category] || 0) + item.amount;
+          });
+          return acc;
+        }, {});
+
+        const vendorBreakdown = receipts.reduce((acc: any, receipt: any) => {
+          acc[receipt.vendor] =
+            (acc[receipt.vendor] || 0) + receipt.totalAmount;
+          return acc;
+        }, {});
+
+        setSummary({
+          totalAmount,
+          receiptCount: receipts.length,
+          categoryBreakdown,
+          vendorBreakdown,
+        });
+      } catch (err) {
+        console.error("Error fetching event data:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch event data"
+        );
       } finally {
         setIsLoading(false);
       }
@@ -63,6 +76,21 @@ export default function EventDetailPage() {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-400">{error}</p>
+        <Link
+          href="/"
+          className="mt-4 inline-flex items-center text-primary-400 hover:text-primary-300"
+        >
+          <ArrowLeftIcon className="h-5 w-5 mr-1" />
+          Back to Events
+        </Link>
       </div>
     );
   }

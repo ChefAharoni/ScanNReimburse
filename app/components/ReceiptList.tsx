@@ -8,6 +8,7 @@ import {
   PencilIcon,
   ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
+import { useRouter } from "next/navigation";
 
 interface ReceiptListProps {
   eventId: string;
@@ -15,37 +16,76 @@ interface ReceiptListProps {
 
 export default function ReceiptList({ eventId }: ReceiptListProps) {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editingReceipt, setEditingReceipt] = useState<Receipt | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    const fetchReceipts = async () => {
-      try {
-        setIsLoading(true);
-        // TODO: Implement API call to fetch receipts
-        // For now, using mock data
-        const mockReceipts: Receipt[] = [];
-        setReceipts(mockReceipts);
-      } catch (error) {
-        console.error("Error fetching receipts:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchReceipts();
   }, [eventId]);
 
-  const handleDelete = async (receiptId: string) => {
-    if (confirm("Are you sure you want to delete this receipt?")) {
-      // TODO: Implement delete functionality
-      setReceipts(receipts.filter((receipt) => receipt.id !== receiptId));
+  const fetchReceipts = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/events/${eventId}/receipts`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch receipts");
+      }
+      const data = await response.json();
+      setReceipts(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch receipts");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDownload = async (receipt: Receipt) => {
-    // TODO: Implement download functionality
-    console.log("Downloading receipt:", receipt.id);
+  const handleDelete = async (receiptId: string) => {
+    if (!confirm("Are you sure you want to delete this receipt?")) return;
+
+    try {
+      const response = await fetch(
+        `/api/events/${eventId}/receipts/${receiptId}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to delete receipt");
+      }
+      await fetchReceipts();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete receipt");
+    }
+  };
+
+  const handleDownload = async (receiptId: string) => {
+    try {
+      const response = await fetch(
+        `/api/events/${eventId}/receipts/${receiptId}/download`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to download receipt");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `receipt-${receiptId}.${
+        response.headers.get("content-type")?.split("/")[1] || "pdf"
+      }`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to download receipt"
+      );
+    }
   };
 
   const getCategoryColor = (category: ItemCategory) => {
@@ -60,10 +100,24 @@ export default function ReceiptList({ eventId }: ReceiptListProps) {
     return colors[category] || "text-gray-400";
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-32">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12 bg-gray-800 rounded-lg">
+        <p className="text-red-400">{error}</p>
+        <button
+          onClick={fetchReceipts}
+          className="mt-4 text-primary-400 hover:text-primary-300"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -99,7 +153,7 @@ export default function ReceiptList({ eventId }: ReceiptListProps) {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleDownload(receipt)}
+                  onClick={() => handleDownload(receipt.id)}
                   className="p-1 hover:bg-gray-700 rounded text-primary-400"
                   title="Download"
                 >

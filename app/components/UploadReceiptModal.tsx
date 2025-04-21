@@ -98,8 +98,36 @@ export default function UploadReceiptModal({
 
     try {
       setIsProcessing(true);
-      // TODO: Implement API call to save receipt
-      console.log("Saving receipt:", processedReceipt);
+      setError(null);
+
+      // Create FormData to send file and receipt data
+      const formData = new FormData();
+
+      // Add the file
+      if (processedReceipt.file) {
+        formData.append("file", processedReceipt.file);
+      }
+
+      // Add the receipt data
+      formData.append(
+        "data",
+        JSON.stringify({
+          vendorName: processedReceipt.vendorName,
+          date: processedReceipt.date,
+          totalAmount: processedReceipt.totalAmount,
+          items: processedReceipt.items,
+        })
+      );
+
+      // Send the request
+      const response = await fetch(`/api/events/${eventId}/receipts`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save receipt");
+      }
 
       // Reset state and close modal
       setProcessedReceipt(null);

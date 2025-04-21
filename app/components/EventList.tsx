@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FolderIcon, TrashIcon, PencilIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface Event {
   id: string;
@@ -10,26 +11,109 @@ interface Event {
   receiptCount: number;
   totalAmount: number;
   createdAt: string;
+  updatedAt: string;
 }
 
 export default function EventList() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const router = useRouter();
+
+  const fetchEvents = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/events");
+      if (!response.ok) {
+        throw new Error("Failed to fetch events");
+      }
+
+      const data = await response.json();
+      setEvents(data);
+    } catch (err) {
+      console.error("Error fetching events:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch events");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
   const handleDelete = async (eventId: string) => {
-    if (confirm("Are you sure you want to delete this event?")) {
-      // TODO: Implement delete functionality
-      setEvents(events.filter((event) => event.id !== eventId));
+    if (!confirm("Are you sure you want to delete this event?")) return;
+
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete event");
+      }
+
+      await fetchEvents();
+      router.refresh();
+    } catch (err) {
+      console.error("Error deleting event:", err);
+      alert("Failed to delete event");
     }
   };
 
   const handleRename = async (event: Event, newName: string) => {
-    // TODO: Implement rename functionality
-    setEvents(
-      events.map((e) => (e.id === event.id ? { ...e, name: newName } : e))
-    );
-    setEditingEvent(null);
+    if (!newName.trim() || newName === event.name) {
+      setEditingEvent(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/events/${event.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: newName.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to rename event");
+      }
+
+      await fetchEvents();
+      setEditingEvent(null);
+      router.refresh();
+    } catch (err) {
+      console.error("Error renaming event:", err);
+      alert("Failed to rename event");
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-32">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-400">{error}</p>
+        <button
+          onClick={fetchEvents}
+          className="mt-4 text-primary-400 hover:text-primary-300"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   if (events.length === 0) {
     return (
@@ -55,6 +139,13 @@ export default function EventList() {
                   className="input-field"
                   defaultValue={event.name}
                   onBlur={(e) => handleRename(event, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleRename(event, e.currentTarget.value);
+                    } else if (e.key === "Escape") {
+                      setEditingEvent(null);
+                    }
+                  }}
                   autoFocus
                 />
               ) : (
@@ -68,12 +159,14 @@ export default function EventList() {
               <button
                 onClick={() => setEditingEvent(event)}
                 className="p-1 hover:bg-gray-700 rounded"
+                title="Rename"
               >
                 <PencilIcon className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleDelete(event.id)}
                 className="p-1 hover:bg-gray-700 rounded text-red-400"
+                title="Delete"
               >
                 <TrashIcon className="h-4 w-4" />
               </button>
