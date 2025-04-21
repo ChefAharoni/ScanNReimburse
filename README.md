@@ -1,100 +1,118 @@
 # ScanNReimburse
 
-A modern web application for scanning, organizing, and managing receipts for reimbursement purposes.
+ScanNReimburse is a modern web application that helps users manage and track event expenses by scanning and processing receipts. Built with Next.js and TypeScript, it provides a seamless experience for uploading, processing, and managing receipts for various events.
 
 ## Features
 
-- 📸 Upload receipts via camera or file upload
-- 🤖 AI-powered receipt parsing and categorization
-- 📁 Organize receipts into event folders
-- 📊 Generate detailed reports and summaries
-- 📱 Mobile-friendly responsive design
-- 🌙 Dark theme UI
+- **Event Management**
+
+  - Create and manage multiple events
+  - Track event details and total expenses
+  - View event-specific receipt collections
+
+- **Receipt Processing**
+
+  - Upload receipts in various formats (PDF, JPG, JPEG, PNG)
+  - Automatic receipt data extraction
+  - Categorize items as Food or Drinks
+  - Manual item entry and editing
+  - Download original receipt files
+
+- **Expense Tracking**
+  - View total expenses per event
+  - Track individual item costs
+  - Categorize expenses
+  - Download processed receipt data
 
 ## Tech Stack
 
-- Next.js 14
-- TypeScript
-- Tailwind CSS
-- OpenAI API (GPT-4 Vision)
-- Headless UI
-- React Webcam
+- **Frontend**
 
-## Getting Started
+  - Next.js 14
+  - React
+  - TypeScript
+  - Tailwind CSS
 
-### Prerequisites
+- **Backend**
+  - Next.js API Routes
+  - File system storage
+  - JSON data persistence
 
-- Node.js 18+ and npm
-- OpenAI API key
+## Prerequisites
 
-### Installation
+- Node.js 18.0 or higher
+- npm or yarn package manager
+
+## Installation
 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/scannreimburse.git
-   cd scannreimburse
+   git clone https://github.com/ChefAharoni/ScanNReimburse
+   cd ScanNReimburse
    ```
 
 2. Install dependencies:
 
    ```bash
    npm install
+   # or
+   yarn install
    ```
 
-3. Create a `.env` file in the root directory with the following variables:
-
-   ```
-   OPENAI_API_KEY=your_openai_api_key_here
-   NEXT_PUBLIC_APP_URL=http://localhost:3000
-   NEXT_PUBLIC_MAX_RECEIPTS_PER_EVENT=40
+3. Create required directories:
+   ```bash
+   mkdir -p data uploads
    ```
 
-4. Start the development server:
+## Running the Application
+
+1. Start the development server:
 
    ```bash
    npm run dev
+   # or
+   yarn dev
    ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+2. Open your browser and navigate to:
+   ```
+   http://localhost:3000
+   ```
 
 ## Project Structure
 
 ```
-scannreimburse/
+ScanNReimburse/
 ├── app/
-│   ├── api/           # API routes
-│   ├── components/    # React components
-│   ├── lib/          # Utility functions
-│   ├── types/        # TypeScript types
-│   └── utils/        # Helper functions
-├── data/             # Local data storage
-├── uploads/          # Receipt image storage
-└── public/           # Static assets
+│   ├── api/              # API routes
+│   ├── components/       # React components
+│   ├── lib/             # Utility functions
+│   └── types/           # TypeScript types
+├── data/                # JSON data storage
+├── uploads/             # Receipt file storage
+└── public/              # Static assets
 ```
 
-## Features in Detail
+## API Endpoints
 
-### Receipt Processing
+- `GET /api/events` - List all events
+- `POST /api/events` - Create a new event
+- `GET /api/events/[id]` - Get event details
+- `PUT /api/events/[id]` - Update event
+- `DELETE /api/events/[id]` - Delete event
+- `GET /api/events/[id]/receipts` - List event receipts
+- `POST /api/events/[id]/receipts` - Upload new receipt
+- `GET /api/events/[id]/receipts/[receiptId]` - Get receipt details
+- `PUT /api/events/[id]/receipts/[receiptId]` - Update receipt
+- `DELETE /api/events/[id]/receipts/[receiptId]` - Delete receipt
+- `GET /api/events/[id]/receipts/[receiptId]/download` - Download receipt file
 
-- Supports JPG, PNG, and PDF formats
-- AI-powered OCR and data extraction
-- Automatic item categorization
-- Total amount validation
+## Data Storage
 
-### Event Management
-
-- Create and organize event folders
-- Track receipt counts and totals
-- Generate CSV and PDF reports
-- Edit and manage receipt data
-
-### Security
-
-- Secure file storage
-- Environment variable protection
-- HTTPS encryption
-- GDPR compliance
+- Event and receipt data is stored in `data/events.json`
+- Receipt files are stored in the `uploads` directory
+- All data is persisted locally
 
 ## Contributing
 
@@ -106,7 +124,7 @@ scannreimburse/
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgments
 
