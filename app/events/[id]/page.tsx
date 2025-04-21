@@ -7,7 +7,12 @@ import Link from "next/link";
 import ReceiptList from "@/app/components/ReceiptList";
 import UploadReceiptModal from "@/app/components/UploadReceiptModal";
 import EventSummary from "@/app/components/EventSummary";
-import { Event, EventSummary as EventSummaryType } from "@/app/types";
+import {
+  Event,
+  EventSummary as EventSummaryType,
+  ItemCategory,
+  Receipt,
+} from "@/app/types";
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -26,37 +31,77 @@ export default function EventDetailPage() {
         setError(null);
 
         // Fetch event data
-        const eventResponse = await fetch(`/api/events/${eventId}`);
+        const eventResponse = await fetch(`/api/events/${eventId}`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        });
+
         if (!eventResponse.ok) {
           throw new Error("Failed to fetch event");
         }
+
         const eventData = await eventResponse.json();
         setEvent(eventData);
 
+        // Fetch receipts if not included in the event data
+        let receipts = eventData.receipts || [];
+        if (!receipts.length) {
+          const receiptsResponse = await fetch(
+            `/api/events/${eventId}/receipts`,
+            {
+              cache: "no-store",
+              headers: {
+                "Cache-Control": "no-cache",
+              },
+            }
+          );
+
+          if (receiptsResponse.ok) {
+            receipts = await receiptsResponse.json();
+          }
+        }
+
         // Calculate summary
-        const receipts = eventData.receipts || [];
         const totalAmount = receipts.reduce(
-          (sum: number, receipt: any) => sum + receipt.totalAmount,
+          (sum: number, receipt: Receipt) => sum + (receipt.totalAmount || 0),
           0
         );
 
-        const categoryBreakdown = receipts.reduce((acc: any, receipt: any) => {
-          receipt.items.forEach((item: any) => {
-            acc[item.category] = (acc[item.category] || 0) + item.amount;
-          });
-          return acc;
-        }, {});
+        // Initialize category breakdown object with all categories
+        const categoryBreakdown: { [key in ItemCategory]?: number } = {};
+        Object.values(ItemCategory).forEach((category) => {
+          categoryBreakdown[category] = 0;
+        });
 
-        const vendorBreakdown = receipts.reduce((acc: any, receipt: any) => {
-          acc[receipt.vendor] =
-            (acc[receipt.vendor] || 0) + receipt.totalAmount;
-          return acc;
-        }, {});
+        // Calculate category and vendor breakdowns
+        const vendorBreakdown: { [vendor: string]: number } = {};
+
+        receipts.forEach((receipt: Receipt) => {
+          // Add vendor to breakdown
+          const vendorName = receipt.vendorName || "Unknown";
+          vendorBreakdown[vendorName] =
+            (vendorBreakdown[vendorName] || 0) + (receipt.totalAmount || 0);
+
+          // Add categories to breakdown
+          if (receipt.items && Array.isArray(receipt.items)) {
+            receipt.items.forEach((item) => {
+              if (item.category) {
+                const amount = (item.price || 0) * (item.quantity || 1);
+                categoryBreakdown[item.category] =
+                  (categoryBreakdown[item.category] || 0) + amount;
+              }
+            });
+          }
+        });
 
         setSummary({
           totalAmount,
           receiptCount: receipts.length,
-          categoryBreakdown,
+          categoryBreakdown: categoryBreakdown as {
+            [key in ItemCategory]: number;
+          },
           vendorBreakdown,
         });
       } catch (err) {
@@ -70,6 +115,12 @@ export default function EventDetailPage() {
     };
 
     fetchEventData();
+
+    // Set up an interval to refresh the data
+    const intervalId = setInterval(fetchEventData, 5000);
+
+    // Clean up interval when component unmounts
+    return () => clearInterval(intervalId);
   }, [eventId]);
 
   if (isLoading) {

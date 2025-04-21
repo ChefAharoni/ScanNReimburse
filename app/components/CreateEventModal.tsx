@@ -37,9 +37,14 @@ export default function CreateEventModal({
         throw new Error("Failed to create event");
       }
 
+      // Get the new event data
+      const newEvent = await response.json();
+
       setEventName("");
       onClose();
-      router.refresh();
+
+      // Force a hard navigation to refresh the page with the new event
+      window.location.href = `/events/${newEvent.id}`;
     } catch (err) {
       console.error("Error creating event:", err);
       setError(err instanceof Error ? err.message : "Failed to create event");
@@ -51,7 +56,7 @@ export default function CreateEventModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-gray-800 p-6 rounded-lg w-full max-w-md">
         <h2 className="text-xl font-semibold mb-4">Create New Event</h2>
         <form onSubmit={handleSubmit}>

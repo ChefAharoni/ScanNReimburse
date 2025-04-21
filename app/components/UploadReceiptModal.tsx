@@ -6,7 +6,7 @@ import { XMarkIcon, CameraIcon, PhotoIcon } from "@heroicons/react/24/outline";
 import { useDropzone } from "react-dropzone";
 import Webcam from "react-webcam";
 import { processReceiptImage, validateReceipt } from "@/app/utils/receipt";
-import { Receipt } from "@/app/types";
+import { Receipt, ItemCategory } from "@/app/types";
 
 interface UploadReceiptModalProps {
   isOpen: boolean;
@@ -34,7 +34,9 @@ export default function UploadReceiptModal({
       setError(null);
 
       const file = acceptedFiles[0];
+      // Store the file in the processed receipt for later upload
       const result = await processReceiptImage(file);
+      result.file = file;
 
       if (validateReceipt(result)) {
         setProcessedReceipt(result);
@@ -75,6 +77,7 @@ export default function UploadReceiptModal({
           const file = new File([blob], "receipt.jpg", { type: "image/jpeg" });
 
           const result = await processReceiptImage(file);
+          result.file = file;
 
           if (validateReceipt(result)) {
             setProcessedReceipt(result);
@@ -106,16 +109,18 @@ export default function UploadReceiptModal({
       // Add the file
       if (processedReceipt.file) {
         formData.append("file", processedReceipt.file);
+      } else {
+        throw new Error("No file attached to receipt");
       }
 
       // Add the receipt data
       formData.append(
         "data",
         JSON.stringify({
-          vendorName: processedReceipt.vendorName,
-          date: processedReceipt.date,
-          totalAmount: processedReceipt.totalAmount,
-          items: processedReceipt.items,
+          vendorName: processedReceipt.vendorName || "Unknown Vendor",
+          date: processedReceipt.date || new Date().toISOString(),
+          totalAmount: processedReceipt.totalAmount || 0,
+          items: processedReceipt.items || [],
         })
       );
 
@@ -132,6 +137,9 @@ export default function UploadReceiptModal({
       // Reset state and close modal
       setProcessedReceipt(null);
       onClose();
+
+      // Force page refresh to show new receipt
+      window.location.reload();
     } catch (err) {
       console.error("Error saving receipt:", err);
       setError("Failed to save receipt. Please try again.");
@@ -291,36 +299,50 @@ export default function UploadReceiptModal({
                           <div className="flex justify-between">
                             <span className="text-gray-400">Vendor:</span>
                             <span className="font-medium">
-                              {processedReceipt.vendorName}
+                              {processedReceipt.vendorName || "Unknown Vendor"}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-400">Date:</span>
                             <span className="font-medium">
-                              {processedReceipt.date}
+                              {processedReceipt.date
+                                ? new Date(
+                                    processedReceipt.date
+                                  ).toLocaleDateString()
+                                : "No date"}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-400">Total:</span>
                             <span className="font-medium">
-                              ${processedReceipt.totalAmount?.toFixed(2)}
+                              ${(processedReceipt.totalAmount || 0).toFixed(2)}
                             </span>
                           </div>
                           <div className="mt-4">
                             <h5 className="text-sm font-medium mb-2">Items</h5>
-                            <div className="space-y-1">
-                              {processedReceipt.items?.map((item, index) => (
-                                <div
-                                  key={index}
-                                  className="flex justify-between text-sm"
-                                >
-                                  <span>{item.name}</span>
-                                  <span>
-                                    ${(item.price * item.quantity).toFixed(2)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
+                            {processedReceipt.items &&
+                            processedReceipt.items.length > 0 ? (
+                              <div className="space-y-1">
+                                {processedReceipt.items.map((item, index) => (
+                                  <div
+                                    key={index}
+                                    className="flex justify-between text-sm"
+                                  >
+                                    <span>{item.name}</span>
+                                    <span>
+                                      $
+                                      {(
+                                        (item.price || 0) * (item.quantity || 1)
+                                      ).toFixed(2)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-400">
+                                No items detected
+                              </p>
+                            )}
                           </div>
                         </div>
 

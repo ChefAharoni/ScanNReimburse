@@ -23,15 +23,28 @@ export default function ReceiptList({ eventId }: ReceiptListProps) {
 
   useEffect(() => {
     fetchReceipts();
+
+    // Set up an interval to refresh the data
+    const intervalId = setInterval(fetchReceipts, 5000);
+
+    // Clean up interval when component unmounts
+    return () => clearInterval(intervalId);
   }, [eventId]);
 
   const fetchReceipts = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/events/${eventId}/receipts`);
+      const response = await fetch(`/api/events/${eventId}/receipts`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+
       if (!response.ok) {
         throw new Error("Failed to fetch receipts");
       }
+
       const data = await response.json();
       setReceipts(data);
       setError(null);
@@ -100,7 +113,7 @@ export default function ReceiptList({ eventId }: ReceiptListProps) {
     return colors[category] || "text-gray-400";
   };
 
-  if (loading) {
+  if (loading && receipts.length === 0) {
     return (
       <div className="flex justify-center items-center h-32">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
@@ -108,7 +121,7 @@ export default function ReceiptList({ eventId }: ReceiptListProps) {
     );
   }
 
-  if (error) {
+  if (error && receipts.length === 0) {
     return (
       <div className="text-center py-12 bg-gray-800 rounded-lg">
         <p className="text-red-400">{error}</p>
@@ -136,19 +149,28 @@ export default function ReceiptList({ eventId }: ReceiptListProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Receipts</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Receipts</h2>
+        {loading && (
+          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary-500"></div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {receipts.map((receipt) => (
           <div key={receipt.id} className="card">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-lg font-medium">{receipt.vendorName}</h3>
+                <h3 className="text-lg font-medium">
+                  {receipt.vendorName || "Unknown Vendor"}
+                </h3>
                 <p className="text-sm text-gray-400">
-                  {new Date(receipt.date).toLocaleDateString()}
+                  {receipt.date
+                    ? new Date(receipt.date).toLocaleDateString()
+                    : "No date"}
                 </p>
                 <p className="text-lg font-bold mt-1">
-                  ${receipt.totalAmount.toFixed(2)}
+                  ${(receipt.totalAmount || 0).toFixed(2)}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -178,21 +200,30 @@ export default function ReceiptList({ eventId }: ReceiptListProps) {
 
             <div className="mt-4">
               <h4 className="text-sm font-medium mb-2">Items</h4>
-              <div className="space-y-1">
-                {receipt.items.map((item) => (
-                  <div key={item.id} className="flex justify-between text-sm">
-                    <span className="flex items-center">
-                      <span
-                        className={`w-2 h-2 rounded-full ${getCategoryColor(
-                          item.category
-                        )} mr-2`}
-                      ></span>
-                      {item.name} {item.quantity > 1 && `(x${item.quantity})`}
-                    </span>
-                    <span>${(item.price * item.quantity).toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
+              {receipt.items && receipt.items.length > 0 ? (
+                <div className="space-y-1">
+                  {receipt.items.map((item, index) => (
+                    <div
+                      key={item.id || index}
+                      className="flex justify-between text-sm"
+                    >
+                      <span className="flex items-center">
+                        <span
+                          className={`w-2 h-2 rounded-full ${getCategoryColor(
+                            item.category
+                          )} mr-2`}
+                        ></span>
+                        {item.name} {item.quantity > 1 && `(x${item.quantity})`}
+                      </span>
+                      <span>
+                        ${((item.price || 0) * (item.quantity || 1)).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">No items found</p>
+              )}
             </div>
           </div>
         ))}

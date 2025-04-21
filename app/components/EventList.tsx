@@ -12,6 +12,7 @@ interface Event {
   totalAmount: number;
   createdAt: string;
   updatedAt: string;
+  receipts?: any[];
 }
 
 export default function EventList() {
@@ -26,13 +27,33 @@ export default function EventList() {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch("/api/events");
+      const response = await fetch("/api/events", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+
       if (!response.ok) {
         throw new Error("Failed to fetch events");
       }
 
       const data = await response.json();
-      setEvents(data);
+
+      // Calculate receipt counts and total amounts if not already provided
+      const processedEvents = data.map((event: Event) => {
+        if (event.receipts) {
+          const receiptCount = event.receipts.length;
+          const totalAmount = event.receipts.reduce(
+            (sum: number, receipt: any) => sum + (receipt.totalAmount || 0),
+            0
+          );
+          return { ...event, receiptCount, totalAmount };
+        }
+        return event;
+      });
+
+      setEvents(processedEvents);
     } catch (err) {
       console.error("Error fetching events:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch events");
@@ -43,6 +64,12 @@ export default function EventList() {
 
   useEffect(() => {
     fetchEvents();
+
+    // Set up an interval to refresh the data every 5 seconds
+    const intervalId = setInterval(fetchEvents, 5000);
+
+    // Clean up interval when component unmounts
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleDelete = async (eventId: string) => {
@@ -152,7 +179,8 @@ export default function EventList() {
                 <h3 className="text-lg font-medium">{event.name}</h3>
               )}
               <p className="text-sm text-gray-400">
-                {event.receiptCount} receipts • ${event.totalAmount.toFixed(2)}
+                {event.receiptCount || 0} receipts • $
+                {(event.totalAmount || 0).toFixed(2)}
               </p>
             </div>
             <div className="flex gap-2">

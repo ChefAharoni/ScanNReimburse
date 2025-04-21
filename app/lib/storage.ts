@@ -21,19 +21,20 @@ const initializeStorage = () => {
 };
 
 // Save a file to the uploads directory
-export const saveFile = async (
-  file: Buffer,
-  originalName: string
-): Promise<string> => {
+export const saveFile = async (file: File): Promise<string> => {
   const { uploadsDir } = initializeStorage();
 
   // Generate a unique filename
-  const fileExtension = path.extname(originalName);
+  const fileExtension = path.extname(file.name);
   const fileName = `${uuidv4()}${fileExtension}`;
   const filePath = path.join(uploadsDir, fileName);
 
+  // Convert File to Buffer
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
   // Write the file
-  await fs.promises.writeFile(filePath, file);
+  await fs.promises.writeFile(filePath, buffer);
 
   return fileName;
 };

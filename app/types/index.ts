@@ -5,6 +5,7 @@ export interface Event {
   totalAmount: number;
   createdAt: string;
   updatedAt: string;
+  receipts?: Receipt[];
 }
 
 export interface Receipt {
@@ -14,18 +15,20 @@ export interface Receipt {
   date: string;
   totalAmount: number;
   items: ReceiptItem[];
-  imageUrl: string;
+  filePath: string;
+  file?: File; // Used for client-side file handling
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ReceiptItem {
   id: string;
-  receiptId: string;
+  receiptId?: string; // Optional for new items
   name: string;
   price: number;
   category: ItemCategory;
   quantity: number;
+  amount?: number; // Calculated as price * quantity
 }
 
 export enum ItemCategory {
@@ -41,7 +44,7 @@ export interface EventSummary {
   totalAmount: number;
   receiptCount: number;
   categoryBreakdown: {
-    [key in ItemCategory]: number;
+    [key in ItemCategory]?: number;
   };
   vendorBreakdown: {
     [vendorName: string]: number;
