@@ -4,7 +4,7 @@ import { EventSummary as EventSummaryType, ItemCategory } from "@/app/types";
 import {
   ChartBarIcon,
   CurrencyDollarIcon,
-  ReceiptIcon,
+  ReceiptRefundIcon,
 } from "@heroicons/react/24/outline";
 
 interface EventSummaryProps {
@@ -37,7 +37,7 @@ export default function EventSummary({ summary }: EventSummaryProps) {
         </div>
 
         <div className="bg-gray-700 rounded-lg p-4 flex items-center">
-          <ReceiptIcon className="h-8 w-8 text-primary-400 mr-3" />
+          <ReceiptRefundIcon className="h-8 w-8 text-primary-400 mr-3" />
           <div>
             <p className="text-sm text-gray-400">Receipts</p>
             <p className="text-xl font-bold">{summary.receiptCount}</p>
@@ -49,7 +49,9 @@ export default function EventSummary({ summary }: EventSummaryProps) {
           <div>
             <p className="text-sm text-gray-400">Categories</p>
             <p className="text-xl font-bold">
-              {Object.keys(summary.categoryBreakdown).length}
+              {Object.entries(summary.categoryBreakdown).filter(
+                ([_, amount]) => amount > 0
+              ).length || 0}
             </p>
           </div>
         </div>
@@ -71,6 +73,11 @@ export default function EventSummary({ summary }: EventSummaryProps) {
                   <span className="font-medium">${amount.toFixed(2)}</span>
                 </div>
               )
+          )}
+          {Object.entries(summary.categoryBreakdown).filter(
+            ([_, amount]) => amount > 0
+          ).length === 0 && (
+            <p className="text-sm text-gray-400">No categories found</p>
           )}
         </div>
 
